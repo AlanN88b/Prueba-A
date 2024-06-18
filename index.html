@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validación de Promorack</title>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            overflow-y: auto;
+            max-height: 80vh; /* Ajustar para permitir el desplazamiento */
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        label {
+            display: block;
+            margin: 15px 0 5px;
+        }
+        select, input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[readonly] {
+            background-color: #f4f4f9;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #resultado {
+            text-align: center;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        .aplica {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .no-aplica {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .detalle {
+            display: none;
+        }
+        .highlight-red {
+            color: red;
+        }
+        .list-container {
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            max-height: 50vh; /* Ajustar para permitir el desplazamiento */
+        }
+        .list-container table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .list-container th, .list-container td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+        .list-container th {
+            background-color: #007BFF;
+            color: white;
+        }
+        .remove-button {
+            background-color: #FF0000;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .remove-button:hover {
+            background-color: #b30000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Validación de Promorack</h1>
+        <label for="centro">Centro (Nomenclatura):</label>
+        <select id="centro">
+            <option value="">Selecciona un centro</option>
+        </select>
+        <br>
+        <label for="ruta">Rutas:</label>
+        <select id="ruta">
+            <option value="">Selecciona una ruta</option>
+        </select>
+        <br>
+        <label for="cliente">Códigos de Cliente:</label>
+        <select id="cliente">
+            <option value="">Selecciona un cliente</option>
+        </select>
+        <br>
+        <label for="nombreNegocio">Nombre de Cliente:</label>
+        <input type="text" id="nombreNegocio" readonly>
+        <br>
+        <label for="nombreCliente">Nombre de Negocio:</label>
+        <input type="text" id="nombreCliente" readonly>
+        <br>
+        <label for="tipoCluster">Tipo de Cluster:</label>
+        <input type="text" id="tipoCluster" readonly class="tipoCluster">
+        <br>
+        <label for="direccion">Dirección:</label>
+        <input type="text" id="direccion" readonly>
+        <br>
+        <button id="verificar">Verificar</button>
+        <p id="resultado"></p>
+        <p id="mensaje" class="detalle">No se puede agregar ya que no aplica.</p>
+        <button id="agregar" disabled>Agregar</button>
+        <button id="descargarExcel" disabled>Descargar Excel</button>
+    </div>
+    <div class="list-container">
+        <h2>Clientes Agregados</h2>
+        <table id="clientesAgregados">
+            <thead>
+                <tr>
+                    <th>Centro</th>
+                    <th>Ruta</th>
+                    <th>Código de Cliente</th>
+                    <th>Nombre de Cliente</th>
+                    <th>Nombre de Negocio</th>
+                    <th>Tipo de Cluster</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Aquí se agregarán los clientes -->
+            </tbody>
+        </table>
+    </div>
+    <script>
+        let clientesAgregados = [];
+
+        async function loadData() {
+            try {
+                const responseClientes = await fetch('clientes_segmentacion.json');
+                const clientesSegmentacion = await responseClientes.json();
+                console.log("Clientes Segmentacion cargados:", clientesSegmentacion);
+
+                const responseRestricciones = await fetch('restricciones.json');
+                const restricciones = await responseRestricciones.json();
+                console.log("Restricciones cargadas:", restricciones);
+
+                const centros = [...new Set(clientesSegmentacion.map(item => item.Centro))];
+                console.log("Centros:", centros);
+                const centroSelect = $('#centro');
+                centros.forEach(centro => {
+                    const option = new Option(centro, centro);
+                    centroSelect.append(option);
+                });
+
+                centroSelect.select2().on('change', function() {
+                    const selectedCentro = $(this).val();
+                    console.log("Centro seleccionado:", selectedCentro);
+                    const rutaSelect = $('#ruta');
+
+                    rutaSelect.empty().append('<option value="">Selecciona una ruta</option>');
+
+                    const rutas = [...new Set(clientesSegmentacion
+                        .filter(item => item.Centro === selectedCentro)
+                        .map(item => item.Ruta))];
+                    console.log("Rutas encontradas:", rutas);
+                    rutas.forEach(ruta => {
+                        const option = new Option(ruta, ruta);
+                        rutaSelect.append(option);
+                    });
+
+                    rutaSelect.select2();
+                });
+
+                $('#ruta').select2().on('change', function() {
+                    const selectedRuta = $(this).val();
+                    console.log("Ruta seleccionada:", selectedRuta);
+                    const clienteSelect = $('#cliente');
+
+                    clienteSelect.empty().append('<option value="">Selecciona un cliente</option>');
+
+                    const clientes = [...new Set(clientesSegmentacion
+                        .filter(item => item.Ruta === selectedRuta)
+                        .map(item => item.Codigo_Cliente_HTML))];
+                    console.log("Clientes encontrados:", clientes);
+                    clientes.forEach(cliente => {
+                        const option = new Option(cliente, cliente);
+                        clienteSelect.append(option);
+                    });
+
+                    clienteSelect.select2();
+                    $('#agregar').prop('disabled', true); // Desactivar el botón de agregar cuando cambie la ruta
+                });
+
+                $('#cliente').select2().on('change', function() {
+                    const selectedCentro = $('#centro').val();
+                    const selectedRuta = $('#ruta').val();
+                    const selectedCliente = $(this).val(); // Obtener el código completo
+                    const selectedClienteTruncado = selectedCliente.slice(0, 13); // Truncar a los primeros 13 dígitos
+                    console.log("Cliente seleccionado:", selectedCliente);
+
+                    const combina = clientesSegmentacion.filter(item => 
+                        item.Centro === selectedCentro && 
+                        item.Ruta === selectedRuta && 
+                        item.Codigo_Cliente_HTML.slice(0, 13) === selectedClienteTruncado
+                    );
+                    console.log("Combinación encontrada:", combina);
+
+                    const resultadoElement = $('#resultado');
+                    const agregarButton = $('#agregar');
+                    const mensajeElement = $('#mensaje');
+                    if (combina.length === 0) {
+                        console.log('No se encontró la combinación en la base de datos');
+                        resultadoElement.text('No Aplica: Cliente no encontrado en la base de datos').removeClass('aplica').addClass('no-aplica').show();
+                        agregarButton.prop('disabled', true);
+                        mensajeElement.hide();
+                        return;
+                    }
+
+                    const clienteData = combina[0];
+                    $('#nombreNegocio').val(clienteData['Nombre_de_Cliente']); // Cambiar aquí para mostrar el nombre de cliente
+                    $('#nombreCliente').val(clienteData['Nombre_de_Negocio']); // Cambiar aquí para mostrar el nombre del negocio
+                    $('#tipoCluster').val(clienteData['Tipo_de_Cluster']); // Cambiar aquí para mostrar el tipo de cluster
+                    $('#direccion').val(clienteData['Direccion']); // Cambiar aquí para mostrar la dirección
+
+                    // Resaltar el tipo de cluster en rojo si es necesario
+                    if (clienteData['Tipo_de_Cluster'].toLowerCase() === 'mantener' || clienteData['Tipo_de_Cluster'].toLowerCase() === 'optimizar') {
+                        $('#tipoCluster').addClass('highlight-red');
+                    } else {
+                        $('#tipoCluster').removeClass('highlight-red');
+                    }
+
+                    resultadoElement.hide();
+                    agregarButton.prop('disabled', true);
+                    mensajeElement.hide();
+                });
+
+                $('#verificar').on('click', function() {
+                    const selectedCliente = $('#cliente').val();
+                    const selectedClienteTruncado = selectedCliente.slice(0, 13); // Truncar a los primeros 13 dígitos
+                    console.log("Verificando restricciones para Cliente:", selectedCliente);
+
+                    const restriccionesCliente = restricciones.find(item => item.Codigo === selectedClienteTruncado);
+                    const resultadoElement = $('#resultado');
+                    const agregarButton = $('#agregar');
+                    const mensajeElement = $('#mensaje');
+
+                    if (restriccionesCliente) {
+                        console.log('Restricción encontrada para el cliente:', restriccionesCliente);
+                        resultadoElement.text('No Aplica: ' + restriccionesCliente.No_Aplica_Por).removeClass('aplica').addClass('no-aplica').show();
+                        agregarButton.prop('disabled', true);
+                        mensajeElement.show();
+                    } else {
+                        resultadoElement.text('Aplica').removeClass('no-aplica').addClass('aplica').show();
+                        agregarButton.prop('disabled', false);
+                        mensajeElement.hide();
+                    }
+                });
+
+                $('#agregar').on('click', function() {
+                    const centro = $('#centro').val();
+                    const ruta = $('#ruta').val();
+                    const cliente = $('#cliente').val();
+                    const nombreNegocio = $('#nombreNegocio').val();
+                    const nombreCliente = $('#nombreCliente').val(); // Obtener el nombre del negocio
+                    const tipoCluster = $('#tipoCluster').val();
+                    const direccion = $('#direccion').val(); // Obtener la dirección
+
+                    const nuevoCliente = {
+                        Centro: centro,
+                        Ruta: ruta,
+                        Codigo_Cliente: cliente.slice(0, 13), // Solo los primeros 13 dígitos
+                        Nombre_de_Cliente: nombreNegocio,
+                        Nombre_de_Negocio: nombreCliente, // Agregar nombre del negocio para la tabla
+                        Tipo_de_Cluster: tipoCluster,
+                        Direccion: direccion // Agregar dirección para el Excel
+                    };
+
+                    const resultadoElement = $('#resultado');
+                    if (resultadoElement.hasClass('no-aplica')) {
+                        $('#mensaje').show();
+                        return;
+                    }
+
+                    clientesAgregados.push(nuevoCliente);
+
+                    const nuevaFila = `
+                        <tr>
+                            <td>${centro}</td>
+                            <td>${ruta}</td>
+                            <td>${cliente.slice(0, 13)}</td> <!-- Mostrar solo los primeros 13 dígitos -->
+                            <td>${nombreNegocio}</td>
+                            <td>${nombreCliente}</td>
+                            <td class="${tipoCluster.toLowerCase() === 'mantener' || tipoCluster.toLowerCase() === 'optimizar' ? 'highlight-red' : ''}">${tipoCluster}</td>
+                            <td><button class="remove-button">Eliminar</button></td>
+                        </tr>
+                    `;
+
+                    $('#clientesAgregados tbody').append(nuevaFila);
+
+                    // Añadir evento de eliminación
+                    $('.remove-button').last().on('click', function() {
+                        const index = $(this).closest('tr').index();
+                        clientesAgregados.splice(index, 1);
+                        $(this).closest('tr').remove();
+                        if (clientesAgregados.length === 0) {
+                            $('#descargarExcel').prop('disabled', true);
+                        }
+                    });
+
+                    // Limpiar selección y campos
+                    $('#centro').val('').trigger('change');
+                    $('#ruta').empty().append('<option value="">Selecciona una ruta</option>').trigger('change');
+                    $('#cliente').empty().append('<option value="">Selecciona un cliente</option>').trigger('change');
+                    $('#nombreNegocio').val('');
+                    $('#nombreCliente').val(''); // Limpiar el campo de nombre del negocio
+                    $('#tipoCluster').val('').removeClass('highlight-red'); // Limpiar el campo de tipo de cluster
+                    $('#direccion').val(''); // Limpiar el campo de dirección
+                    $('#resultado').hide();
+                    $('#agregar').prop('disabled', true);
+                    $('#mensaje').hide();
+
+                    if (clientesAgregados.length > 0) {
+                        $('#descargarExcel').prop('disabled', false);
+                    }
+                });
+
+                $('#descargarExcel').on('click', function() {
+                    if (clientesAgregados.length === 0) {
+                        alert("No hay clientes agregados para descargar.");
+                        return;
+                    }
+
+                    // Crear una copia de clientesAgregados sin la propiedad Direccion
+                    const clientesParaExcel = clientesAgregados.map(cliente => {
+                        const { Direccion, ...clienteSinDireccion } = cliente;
+                        return clienteSinDireccion;
+                    });
+
+                    const wb = XLSX.utils.book_new();
+                    const ws = XLSX.utils.json_to_sheet(clientesParaExcel);
+                    XLSX.utils.book_append_sheet(wb, ws, "Clientes Agregados");
+                    XLSX.writeFile(wb, "clientes_agregados.xlsx");
+                });
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        $(document).ready(function() {
+            loadData();
+        });
+    </script>
+</body>
+</html>
