@@ -11,13 +11,16 @@ output_dir = r'\\ACT_40000008781\ShareEstadisticas\27 Practicantes\Alan Martinez
 os.makedirs(output_dir, exist_ok=True)
 
 # Cargar solo las columnas necesarias y asegurarse de que los códigos se carguen como cadenas de texto
-clientes_segmentacion = pd.read_excel(file_path, sheet_name='Clientes Segmentacion', usecols="A:H", dtype=str)
+clientes_segmentacion = pd.read_excel(file_path, sheet_name='Clientes Segmentacion', usecols="A:I", dtype=str)
+cambios = pd.read_excel(file_path, sheet_name='Clientes Segmentacion', usecols="Y:AG", dtype=str)
 
 # Renombrar las columnas para consistencia
-clientes_segmentacion.columns = ['Centro', 'Ruta', 'Codigo_Cliente', 'Nombre_de_Negocio', 'Nombre_de_Cliente', 'Tipo_de_Cluster','Direccion', 'Codigo_Cliente_HTML']
+clientes_segmentacion.columns = ['Centro', 'Ruta', 'Codigo_Cliente', 'Nombre_de_Negocio', 'Nombre_de_Cliente', 'Tipo_de_Cluster', 'Direccion', 'Codigo_Cliente_HTML', 'Jefe_Zona']
+cambios.columns = ['Centro', 'Ruta', 'Codigo_Cliente', 'Nombre_de_Negocio', 'Nombre_de_Cliente', 'Tipo_de_Cluster', 'Direccion', 'Codigo_Cliente_HTML', 'Jefe_Zona']
 
 # Imprimir las columnas actuales del DataFrame para verificar
 print(clientes_segmentacion.columns)
+print(cambios.columns)
 
 # Cargar las restricciones y asegurarse de que los códigos se carguen como cadenas de texto
 restricciones_j = pd.read_excel(file_path, sheet_name='Clientes Segmentacion', usecols="J", dtype=str)
@@ -55,14 +58,19 @@ restricciones_agrupadas = restricciones.groupby('Codigo')['No_Aplica_Por'].apply
 
 # Convertir los DataFrames a JSON
 clientes_segmentacion_json = clientes_segmentacion.to_json(orient='records')
+cambios_json = cambios.to_json(orient='records')
 restricciones_json = restricciones_agrupadas.to_json(orient='records')
 
 # Guardar los datos en archivos JSON para su uso posterior
 clientes_segmentacion_json_path = os.path.join(output_dir, 'clientes_segmentacion.json')
+cambios_json_path = os.path.join(output_dir, 'cambios.json')
 restricciones_json_path = os.path.join(output_dir, 'restricciones.json')
 
 with open(clientes_segmentacion_json_path, 'w') as f:
     f.write(clientes_segmentacion_json)
+
+with open(cambios_json_path, 'w') as f:
+    f.write(cambios_json)
 
 with open(restricciones_json_path, 'w') as f:
     f.write(restricciones_json)
