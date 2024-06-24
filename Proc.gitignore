@@ -1,0 +1,7 @@
+# Ignorar archivos sensibles
+activos_promorack.json
+cambios.json
+clientes_segmentacion.json
+restricciones.json
+Data Validation PI 2024.xlsm
+extract_data.py

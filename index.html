@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Promorack</title>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .tabs button {
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            margin: 0 10px;
+            border-radius: 5px;
+        }
+        .tabs button.active {
+            background-color: #0056b3;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            display: none;
+            overflow-y: auto;
+            max-height: 80vh;
+        }
+        .container.active {
+            display: block;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        label {
+            display: block;
+            margin: 15px 0 5px;
+        }
+        select, input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[readonly] {
+            background-color: #f4f4f9;
+        }
+        button {
+            color: rgb(0, 0, 0);
+            border: none;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .btn-desactivar {
+            background-color: red;
+        }
+        .btn-activar {
+            background-color: green;
+        }
+        #resultado, #resultadoCambios {
+            text-align: center;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        .aplica {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .no-aplica {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .detalle {
+            display: none;
+        }
+        .highlight-red {
+            color: red;
+        }
+        .list-container {
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            max-height: 50vh;
+        }
+        .list-container table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .list-container th, .list-container td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+        .list-container th {
+            background-color: #007BFF;
+            color: white;
+        }
+        .remove-button {
+            background-color: #FF0000;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .remove-button:hover {
+            background-color: #b30000;
+        }
+        .download-button {
+            background-color: #007BFF;
+        }
+        .download-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="tabs">
+        <button id="tabPromorack" class="active">Validación de Promorack</button>
+        <button id="tabCambios">Cambios</button>
+    </div>
+
+    <div id="containerPromorack" class="container active">
+        <h1>Validación de Promorack</h1>
+        <label for="centro">Centro (Nomenclatura):</label>
+        <select id="centro">
+            <option value="">Selecciona un centro</option>
+        </select>
+        <br>
+        <label for="jefeZona">Jefe de Zona:</label>
+        <select id="jefeZona">
+            <option value="">Selecciona un jefe de zona</option>
+        </select>
+        <br>
+        <label for="ruta">Rutas:</label>
+        <select id="ruta">
+            <option value="">Selecciona una ruta</option>
+        </select>
+        <br>
+        <label for="cliente">Códigos de Cliente:</label>
+        <select id="cliente">
+            <option value="">Selecciona un cliente</option>
+        </select>
+        <br>
+        <label for="nombreNegocio">Nombre de Cliente:</label>
+        <input type="text" id="nombreNegocio" readonly>
+        <br>
+        <label for="nombreCliente">Nombre de Negocio:</label>
+        <input type="text" id="nombreCliente" readonly>
+        <br>
+        <label for="tipoCluster">Tipo de Cluster:</label>
+        <input type="text" id="tipoCluster" readonly class="tipoCluster">
+        <br>
+        <label for="direccion">Dirección:</label>
+        <input type="text" id="direccion" readonly>
+        <br>
+        <button id="verificar">Verificar</button>
+        <p id="resultado"></p>
+        <p id="mensaje" class="detalle">No se puede agregar ya que no aplica.</p>
+        <button id="agregar" disabled>Agregar</button>
+        <button id="descargarExcel" class="download-button" disabled>Descargar Excel</button>
+    </div>
+
+    <div id="containerCambios" class="container">
+        <h1>Cambios</h1>
+        <label for="centroCambios">Centro (Nomenclatura):</label>
+        <select id="centroCambios">
+            <option value="">Selecciona un centro</option>
+        </select>
+        <br>
+        <label for="jefeZonaCambios">Jefe de Zona:</label>
+        <select id="jefeZonaCambios">
+            <option value="">Selecciona un jefe de zona</option>
+        </select>
+        <br>
+        <label for="rutaCambios">Rutas:</label>
+        <select id="rutaCambios">
+            <option value="">Selecciona una ruta</option>
+        </select>
+        <br>
+        <label for="clienteCambios">Códigos de Cliente:</label>
+        <select id="clienteCambios">
+            <option value="">Selecciona un cliente</option>
+        </select>
+        <br>
+        <button id="verificarCambios" class="btn-activar" style="display: none;" disabled>Verificar</button>
+        <button id="agregarCambios" class="btn-desactivar" disabled>Desactivar</button>
+        <p id="resultadoCambios"></p>
+        <p id="mensajeCambios" class="detalle">No se puede activar ya que no aplica.</p>
+        <button id="descargarExcelCambios" class="download-button" disabled>Descargar Excel</button>
+    </div>
+
+    <div class="list-container">
+        <h2>Clientes Agregados</h2>
+        <table id="clientesAgregados">
+            <thead>
+                <tr>
+                    <th>Centro</th>
+                    <th>Jefe de Zona</th>
+                    <th>Ruta</th>
+                    <th>Código de Cliente</th>
+                    <th>Nombre de Cliente</th>
+                    <th>Nombre de Negocio</th>
+                    <th>Acción</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Aquí se agregarán los clientes -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let clientesAgregados = [];
+        let estadoBoton = 'Desactivar';
+
+        async function loadData() {
+            try {
+                const responseClientes = await fetch('clientes_segmentacion.json');
+                const clientesSegmentacion = await responseClientes.json();
+                console.log("Clientes Segmentacion cargados:", clientesSegmentacion);
+
+                const responseCambios = await fetch('cambios.json');
+                const cambiosData = await responseCambios.json();
+                console.log("Cambios cargados:", cambiosData);
+
+                const responseRestricciones = await fetch('restricciones.json');
+                const restricciones = await responseRestricciones.json();
+                console.log("Restricciones cargadas:", restricciones);
+
+                cargarDatosPromorack(clientesSegmentacion, restricciones);
+                cargarDatosCambios(cambiosData, clientesSegmentacion, restricciones);
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        function cargarDatosPromorack(clientesSegmentacion, restricciones) {
+            const centros = [...new Set(clientesSegmentacion.map(item => item.Centro))];
+            console.log("Centros:", centros);
+            const centroSelect = $('#centro');
+            centros.forEach(centro => {
+                const option = new Option(centro, centro);
+                centroSelect.append(option);
+            });
+
+            centroSelect.select2().on('change', function() {
+                const selectedCentro = $(this).val();
+                console.log("Centro seleccionado:", selectedCentro);
+                const jefeZonaSelect = $('#jefeZona');
+
+                jefeZonaSelect.empty().append('<option value="">Selecciona un jefe de zona</option>');
+
+                const jefesZona = [...new Set(clientesSegmentacion
+                    .filter(item => item.Centro === selectedCentro)
+                    .map(item => item.Jefe_Zona))];
+                console.log("Jefes de Zona encontrados:", jefesZona);
+                jefesZona.forEach(jefeZona => {
+                    const option = new Option(jefeZona, jefeZona);
+                    jefeZonaSelect.append(option);
+                });
+
+                jefeZonaSelect.select2();
+            });
+
+            $('#jefeZona').select2().on('change', function() {
+                const selectedCentro = $('#centro').val();
+                const selectedJefeZona = $(this).val();
+                console.log("Jefe de Zona seleccionado:", selectedJefeZona);
+                const rutaSelect = $('#ruta');
+
+                rutaSelect.empty().append('<option value="">Selecciona una ruta</option>');
+
+                const rutas = [...new Set(clientesSegmentacion
+                    .filter(item => item.Centro === selectedCentro && item.Jefe_Zona === selectedJefeZona)
+                    .map(item => item.Ruta))];
+                console.log("Rutas encontradas:", rutas);
+                rutas.forEach(ruta => {
+                    const option = new Option(ruta, ruta);
+                    rutaSelect.append(option);
+                });
+
+                rutaSelect.select2();
+            });
+
+            $('#ruta').select2().on('change', function() {
+                const selectedCentro = $('#centro').val();
+                const selectedJefeZona = $('#jefeZona').val();
+                const selectedRuta = $(this).val();
+                console.log("Ruta seleccionada:", selectedRuta);
+                const clienteSelect = $('#cliente');
+
+                clienteSelect.empty().append('<option value="">Selecciona un cliente</option>');
+
+                const clientes = [...new Set(clientesSegmentacion
+                    .filter(item => item.Centro === selectedCentro && item.Jefe_Zona === selectedJefeZona && item.Ruta === selectedRuta)
+                    .map(item => item.Codigo_Cliente_HTML))];
+                console.log("Clientes encontrados:", clientes);
+                clientes.forEach(cliente => {
+                    const option = new Option(cliente, cliente);
+                    clienteSelect.append(option);
+                });
+
+                clienteSelect.select2();
+                $('#agregar').prop('disabled', true);
+            });
+
+            $('#cliente').select2().on('change', function() {
+                const selectedCentro = $('#centro').val();
+                const selectedJefeZona = $('#jefeZona').val();
+                const selectedRuta = $('#ruta').val();
+                const selectedCliente = $(this).val();
+                const selectedClienteTruncado = selectedCliente.slice(0, 13);
+                console.log("Cliente seleccionado:", selectedCliente);
+
+                const combina = clientesSegmentacion.filter(item => 
+                    item.Centro === selectedCentro && 
+                    item.Jefe_Zona === selectedJefeZona &&
+                    item.Ruta === selectedRuta && 
+                    item.Codigo_Cliente_HTML.slice(0, 13) === selectedClienteTruncado
+                );
+                console.log("Combinación encontrada:", combina);
+
+                const resultadoElement = $('#resultado');
+                const agregarButton = $('#agregar');
+                const mensajeElement = $('#mensaje');
+                if (combina.length === 0) {
+                    console.log('No se encontró la combinación en la base de datos');
+                    resultadoElement.text('No Aplica: Cliente no encontrado en la base de datos').removeClass('aplica').addClass('no-aplica').show();
+                    agregarButton.prop('disabled', true);
+                    mensajeElement.hide();
+                    return;
+                }
+
+                const clienteData = combina[0];
+                $('#nombreNegocio').val(clienteData['Nombre_de_Cliente']);
+                $('#nombreCliente').val(clienteData['Nombre_de_Negocio']);
+                $('#tipoCluster').val(clienteData['Tipo_de_Cluster']);
+                $('#direccion').val(clienteData['Direccion']); // Mostrar la dirección
+
+                if (clienteData['Tipo_de_Cluster'].toLowerCase() === 'mantener' || clienteData['Tipo_de_Cluster'].toLowerCase() === 'optimizar') {
+                    $('#tipoCluster').addClass('highlight-red');
+                } else {
+                    $('#tipoCluster').removeClass('highlight-red');
+                }
+
+                resultadoElement.hide();
+                agregarButton.prop('disabled', true);
+                mensajeElement.hide();
+            });
+
+            $('#verificar').on('click', function() {
+                const selectedCliente = $('#cliente').val();
+                const selectedClienteTruncado = selectedCliente.slice(0, 13);
+                console.log("Verificando restricciones para Cliente:", selectedCliente);
+
+                const restriccionesCliente = restricciones.find(item => item.Codigo === selectedClienteTruncado);
+                const resultadoElement = $('#resultado');
+                const agregarButton = $('#agregar');
+                const mensajeElement = $('#mensaje');
+
+                if (restriccionesCliente) {
+                    console.log('Restricción encontrada para el cliente:', restriccionesCliente);
+                    resultadoElement.text('No Aplica: ' + restriccionesCliente.No_Aplica_Por).removeClass('aplica').addClass('no-aplica').show();
+                    agregarButton.prop('disabled', true);
+                    mensajeElement.show();
+                } else {
+                    resultadoElement.text('Aplica').removeClass('no-aplica').addClass('aplica').show();
+                    agregarButton.prop('disabled', false);
+                    mensajeElement.hide();
+                }
+            });
+
+            $('#agregar').on('click', function() {
+                const centro = $('#centro').val();
+                const jefeZona = $('#jefeZona').val();
+                const ruta = $('#ruta').val();
+                const cliente = $('#cliente').val();
+                const nombreNegocio = $('#nombreNegocio').val();
+                const nombreCliente = $('#nombreCliente').val();
+                const tipoCluster = $('#tipoCluster').val();
+                const direccion = $('#direccion').val();
+
+                const nuevoCliente = {
+                    Centro: centro,
+                    Jefe_Zona: jefeZona,
+                    Ruta: ruta,
+                    Codigo_Cliente: cliente.slice(0, 13),
+                    Nombre_de_Cliente: nombreNegocio,
+                    Nombre_de_Negocio: nombreCliente,
+                    Tipo_de_Cluster: tipoCluster,
+                    Direccion: direccion
+                };
+
+                const resultadoElement = $('#resultado');
+                if (resultadoElement.hasClass('no-aplica')) {
+                    $('#mensaje').show();
+                    return;
+                }
+
+                clientesAgregados.push(nuevoCliente);
+
+                const nuevaFila = `
+                    <tr>
+                        <td>${centro}</td>
+                        <td>${jefeZona}</td>
+                        <td>${ruta}</td>
+                        <td>${cliente.slice(0, 13)}</td>
+                        <td>${nombreNegocio}</td>
+                        <td>${nombreCliente}</td>
+                        <td class="${tipoCluster.toLowerCase() === 'mantener' || tipoCluster.toLowerCase() === 'optimizar' ? 'highlight-red' : ''}">${tipoCluster}</td>
+                        <td><button class="remove-button">Eliminar</button></td>
+                    </tr>
+                `;
+
+                $('#clientesAgregados tbody').append(nuevaFila);
+
+                $('.remove-button').last().on('click', function() {
+                    const index = $(this).closest('tr').index();
+                    clientesAgregados.splice(index, 1);
+                    $(this).closest('tr').remove();
+                    if (clientesAgregados.length === 0) {
+                        $('#descargarExcel').prop('disabled', true);
+                        $('#tabPromorack').prop('disabled', false);
+                        $('#tabCambios').prop('disabled', false);
+                    }
+                });
+
+                $('#centro').val('').trigger('change');
+                $('#jefeZona').empty().append('<option value="">Selecciona un jefe de zona</option>').trigger('change');
+                $('#ruta').empty().append('<option value="">Selecciona una ruta</option>').trigger('change');
+                $('#cliente').empty().append('<option value="">Selecciona un cliente</option>').trigger('change');
+                $('#nombreNegocio').val('');
+                $('#nombreCliente').val('');
+                $('#tipoCluster').val('').removeClass('highlight-red');
+                $('#direccion').val('');
+                $('#resultado').hide();
+                $('#agregar').prop('disabled', true);
+                $('#mensaje').hide();
+
+                if (clientesAgregados.length > 0) {
+                    $('#descargarExcel').prop('disabled', false);
+                    $('#tabPromorack').prop('disabled', true);
+                    $('#tabCambios').prop('disabled', true);
+                }
+            });
+
+            $('#descargarExcel').on('click', function() {
+                if (clientesAgregados.length === 0) {
+                    alert("No hay clientes agregados para descargar.");
+                    return;
+                }
+
+                const clientesParaExcel = clientesAgregados.map(cliente => {
+                    const { Direccion, ...clienteSinDireccion } = cliente;
+                    return clienteSinDireccion;
+                });
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(clientesParaExcel);
+                XLSX.utils.book_append_sheet(wb, ws, "Clientes Agregados");
+                XLSX.writeFile(wb, "clientes_agregados.xlsx");
+
+                clientesAgregados = [];
+                $('#clientesAgregados tbody').empty();
+                $('#descargarExcel').prop('disabled', true);
+                $('#tabPromorack').prop('disabled', false);
+                $('#tabCambios').prop('disabled', false);
+            });
+        }
+
+        function cargarDatosCambios(cambiosData, clientesSegmentacion, restricciones) {
+            const centros = [...new Set(cambiosData.map(item => item.Centro))];
+            console.log("Centros Cambios:", centros);
+            const centroSelect = $('#centroCambios');
+            centros.forEach(centro => {
+                const option = new Option(centro, centro);
+                centroSelect.append(option);
+            });
+
+            centroSelect.select2().on('change', function() {
+                const selectedCentro = $(this).val();
+                console.log("Centro Cambios seleccionado:", selectedCentro);
+                const jefeZonaSelect = $('#jefeZonaCambios');
+
+                jefeZonaSelect.empty().append('<option value="">Selecciona un jefe de zona</option>');
+
+                const jefesZona = [...new Set(cambiosData
+                    .filter(item => item.Centro === selectedCentro)
+                    .map(item => item.Jefe_Zona))];
+                console.log("Jefes de Zona Cambios encontrados:", jefesZona);
+                jefesZona.forEach(jefeZona => {
+                    const option = new Option(jefeZona, jefeZona);
+                    jefeZonaSelect.append(option);
+                });
+
+                jefeZonaSelect.select2();
+            });
+
+            $('#jefeZonaCambios').select2().on('change', function() {
+                const selectedCentro = $('#centroCambios').val();
+                const selectedJefeZona = $(this).val();
+                console.log("Jefe de Zona Cambios seleccionado:", selectedJefeZona);
+                const rutaSelect = $('#rutaCambios');
+
+                rutaSelect.empty().append('<option value="">Selecciona una ruta</option>');
+
+                const rutas = [...new Set(cambiosData
+                    .filter(item => item.Centro === selectedCentro && item.Jefe_Zona === selectedJefeZona)
+                    .map(item => item.Ruta))];
+                console.log("Rutas Cambios encontradas:", rutas);
+                rutas.forEach(ruta => {
+                    const option = new Option(ruta, ruta);
+                    rutaSelect.append(option);
+                });
+
+                rutaSelect.select2();
+            });
+
+            $('#rutaCambios').select2().on('change', function() {
+                const selectedCentro = $('#centroCambios').val();
+                const selectedJefeZona = $('#jefeZonaCambios').val();
+                const selectedRuta = $(this).val();
+                console.log("Ruta Cambios seleccionada:", selectedRuta);
+                const clienteSelect = $('#clienteCambios');
+
+                clienteSelect.empty().append('<option value="">Selecciona un cliente</option>');
+
+                let clientes = [];
+                if (estadoBoton === 'Desactivar') {
+                    clientes = [...new Set(cambiosData
+                        .filter(item => item.Centro === selectedCentro && item.Jefe_Zona === selectedJefeZona && item.Ruta === selectedRuta)
+                        .map(item => item.Codigo_Cliente_HTML))];
+                } else {
+                    clientes = [...new Set(clientesSegmentacion
+                        .filter(item => item.Centro === selectedCentro && item.Jefe_Zona === selectedJefeZona && item.Ruta === selectedRuta)
+                        .map(item => item.Codigo_Cliente_HTML))];
+                }
+
+                console.log("Clientes Cambios encontrados:", clientes);
+                clientes.forEach(cliente => {
+                    const option = new Option(cliente, cliente);
+                    clienteSelect.append(option);
+                });
+
+                clienteSelect.select2();
+                $('#verificarCambios').prop('disabled', true);
+                $('#agregarCambios').prop('disabled', true);
+            });
+
+            $('#clienteCambios').select2().on('change', function() {
+                if (estadoBoton === 'Activar') {
+                    $('#verificarCambios').prop('disabled', false).show();
+                } else {
+                    $('#agregarCambios').prop('disabled', false).show();
+                }
+                $('#resultadoCambios').hide();
+            });
+
+            $('#verificarCambios').on('click', function() {
+                const selectedCentro = $('#centroCambios').val();
+                const selectedJefeZona = $('#jefeZonaCambios').val();
+                const selectedRuta = $('#rutaCambios').val();
+                const selectedCliente = $('#clienteCambios').val();
+                const selectedClienteTruncado = selectedCliente.slice(0, 13);
+                console.log("Cliente Cambios seleccionado:", selectedCliente);
+
+                let combina = [];
+                if (estadoBoton === 'Desactivar') {
+                    combina = cambiosData.filter(item => 
+                        item.Centro === selectedCentro && 
+                        item.Jefe_Zona === selectedJefeZona &&
+                        item.Ruta === selectedRuta && 
+                        item.Codigo_Cliente_HTML.slice(0, 13) === selectedClienteTruncado
+                    );
+                } else {
+                    combina = clientesSegmentacion.filter(item => 
+                        item.Centro === selectedCentro && 
+                        item.Jefe_Zona === selectedJefeZona &&
+                        item.Ruta === selectedRuta && 
+                        item.Codigo_Cliente_HTML.slice(0, 13) === selectedClienteTruncado
+                    );
+                }
+
+                console.log("Combinación Cambios encontrada:", combina);
+
+                const resultadoElement = $('#resultadoCambios');
+                const agregarButton = $('#agregarCambios');
+                const mensajeElement = $('#mensajeCambios');
+
+                if (combina.length === 0) {
+                    console.log('No se encontró la combinación en la base de datos');
+                    resultadoElement.text('No Aplica: Cliente no encontrado en la base de datos').removeClass('aplica').addClass('no-aplica').show();
+                    agregarButton.prop('disabled', true);
+                    mensajeElement.hide();
+                    return;
+                }
+
+                if (estadoBoton === 'Activar') {
+                    const restriccionesCliente = restricciones.find(item => item.Codigo === selectedClienteTruncado);
+                    if (restriccionesCliente) {
+                        console.log('Restricción encontrada para el cliente:', restriccionesCliente);
+                        resultadoElement.text('No Aplica: ' + restriccionesCliente.No_Aplica_Por).removeClass('aplica').addClass('no-aplica').show();
+                        agregarButton.prop('disabled', true);
+                        mensajeElement.show();
+                        return;
+                    }
+                }
+
+                resultadoElement.text('Aplica').removeClass('no-aplica').addClass('aplica').show();
+                agregarButton.prop('disabled', false);
+                mensajeElement.hide();
+            });
+
+            $('#agregarCambios').on('click', function() {
+                const centro = $('#centroCambios').val();
+                const jefeZona = $('#jefeZonaCambios').val();
+                const ruta = $('#rutaCambios').val();
+                const cliente = $('#clienteCambios').val();
+                const selectedClienteTruncado = cliente.slice(0, 13);
+
+                let clienteData = {};
+                if (estadoBoton === 'Desactivar') {
+                    clienteData = cambiosData.find(item => 
+                        item.Centro === centro && 
+                        item.Jefe_Zona === jefeZona &&
+                        item.Ruta === ruta && 
+                        item.Codigo_Cliente_HTML.slice(0, 13) === selectedClienteTruncado
+                    );
+                } else {
+                    clienteData = clientesSegmentacion.find(item => 
+                        item.Centro === centro && 
+                        item.Jefe_Zona === jefeZona &&
+                        item.Ruta === ruta && 
+                        item.Codigo_Cliente_HTML.slice(0, 13) === selectedClienteTruncado
+                    );
+                }
+
+                const nuevoCambio = {
+                    Centro: centro,
+                    Jefe_Zona: jefeZona,
+                    Ruta: ruta,
+                    Codigo_Cliente: cliente.slice(0, 13),
+                    Nombre_de_Cliente: clienteData ? clienteData.Nombre_de_Cliente : '',
+                    Nombre_de_Negocio: clienteData ? clienteData.Nombre_de_Negocio : '',
+                    Accion: estadoBoton
+                };
+
+                clientesAgregados.push(nuevoCambio);
+
+                const nuevaFila = `
+                    <tr>
+                        <td>${centro}</td>
+                        <td>${jefeZona}</td>
+                        <td>${ruta}</td>
+                        <td>${cliente.slice(0, 13)}</td>
+                        <td>${clienteData ? clienteData.Nombre_de_Cliente : ''}</td>
+                        <td>${clienteData ? clienteData.Nombre_de_Negocio : ''}</td>
+                        <td>${estadoBoton}</td>
+                        <td><button class="remove-button">Eliminar</button></td>
+                    </tr>
+                `;
+
+                $('#clientesAgregados tbody').append(nuevaFila);
+
+                $('.remove-button').last().on('click', function() {
+                    const index = $(this).closest('tr').index();
+                    clientesAgregados.splice(index, 1);
+                    $(this).closest('tr').remove();
+                    if (clientesAgregados.length === 0) {
+                        $('#descargarExcelCambios').prop('disabled', true);
+                        $('#tabPromorack').prop('disabled', false);
+                        $('#tabCambios').prop('disabled', false);
+                    }
+                });
+
+                if (estadoBoton === 'Desactivar') {
+                    $('#centroCambios').prop('disabled', true);
+                    $('#jefeZonaCambios').prop('disabled', true);
+                    $('#verificarCambios').removeClass('btn-desactivar').addClass('btn-activar').text('Verificar').show();
+                    $('#agregarCambios').removeClass('btn-desactivar').addClass('btn-activar').text('Activar');
+                    estadoBoton = 'Activar';
+                    $('#rutaCambios').val('').trigger('change');
+                    $('#clienteCambios').val('').trigger('change');
+                } else {
+                    $('#centroCambios').prop('disabled', false);
+                    $('#jefeZonaCambios').prop('disabled', false);
+                    $('#verificarCambios').removeClass('btn-activar').addClass('btn-desactivar').text('Verificar').hide();
+                    $('#agregarCambios').removeClass('btn-activar').addClass('btn-desactivar').text('Desactivar');
+                    estadoBoton = 'Desactivar';
+                    $('#rutaCambios').val('').trigger('change');
+                    $('#clienteCambios').val('').trigger('change');
+                }
+
+                if (clientesAgregados.length > 0) {
+                    $('#descargarExcelCambios').prop('disabled', false);
+                    $('#tabPromorack').prop('disabled', true);
+                    $('#tabCambios').prop('disabled', true);
+                }
+            });
+
+            $('#descargarExcelCambios').on('click', function() {
+                if (clientesAgregados.length === 0) {
+                    alert("No hay clientes agregados para descargar.");
+                    return;
+                }
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(clientesAgregados);
+                XLSX.utils.book_append_sheet(wb, ws, "Clientes Agregados");
+                XLSX.writeFile(wb, "clientes_agregados_cambios.xlsx");
+
+                clientesAgregados = [];
+                $('#clientesAgregados tbody').empty();
+                $('#descargarExcelCambios').prop('disabled', true);
+                $('#tabPromorack').prop('disabled', false);
+                $('#tabCambios').prop('disabled', false);
+            });
+        }
+
+        $(document).ready(function() {
+            loadData();
+
+            $('#tabPromorack').on('click', function() {
+                $('#tabPromorack').addClass('active');
+                $('#tabCambios').removeClass('active');
+                $('#containerPromorack').addClass('active');
+                $('#containerCambios').removeClass('active');
+            });
+
+            $('#tabCambios').on('click', function() {
+                $('#tabPromorack').removeClass('active');
+                $('#tabCambios').addClass('active');
+                $('#containerPromorack').removeClass('active');
+                $('#containerCambios').addClass('active');
+            });
+        });
+    </script>
+</body>
+</html>
